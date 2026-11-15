@@ -233,7 +233,7 @@ void DirectoryNavigation::updateCurrentFilePos(bool ignoreRefreshTimer)
 void DirectoryNavigation::dirListerFinished(const QFileInfoList &files)
 {
     Q_ASSERT(!m_dirListerFuture.isRunning());
-    m_files = std::move(files);
+    m_files = files;
     updateCurrentFilePos(false);
 }
 
