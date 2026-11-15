@@ -190,9 +190,8 @@ void DirectoryNavigation::requestUpdateFileList()
     };
 
     m_dirListerFuture = QtConcurrent::run(getFiles);
-    m_dirListerFuture.then(this, [this](const QFileInfoList &files) {
-        Q_UNUSED(files)
-        dirListerFinished(m_dirListerFuture.takeResult());
+    m_dirListerFuture.then(this, [this](DirListerFuture future) {
+        dirListerFinished(future.takeResult());
     });
 }
 void DirectoryNavigation::updateCurrentFilePos(bool ignoreRefreshTimer)
