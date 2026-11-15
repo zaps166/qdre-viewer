@@ -227,7 +227,7 @@ QImage ImageProvider::requestImage(const QString &id, QSize *size, const QSize &
             return QImage();
         }
 
-        const auto filePath = id.mid(imagePrefix.size() + 2);
+        const auto filePath = QUrl::fromPercentEncoding(QStringView(id).mid(imagePrefix.size() + 2).toUtf8());
         if (filePath.isEmpty())
         {
             return QImage();

@@ -91,7 +91,7 @@ Rectangle {
             image.currentPath = path
             if (path !== "") {
                 image.loadingNextAnimationFrame = animation
-                image.source = "image://qdre/image/" + Singleton.getImageSourceTriggerSeq(image.sourceTrigger, animation) + "/" + path
+                image.source = "image://qdre/image/" + Singleton.getImageSourceTriggerSeq(image.sourceTrigger, animation) + "/" + encodeURIComponent(path)
                 image.sourceTrigger = !image.sourceTrigger
             } else {
                 image.source = ""
