@@ -197,6 +197,7 @@ void ImageProvider::requestWindowColorSpaceAborted()
 
 void ImageProvider::setImageColorSpaceOverride(const QColorSpace &cs)
 {
+    scoped_lock locker(m_imageColorSpaceOverrideMutex);
     m_imageColorSpaceOverride = cs;
 }
 
@@ -205,12 +206,11 @@ QImage ImageProvider::requestImage(const QString &id, QSize *size, const QSize &
     constexpr auto imagePrefix = u"image/"_sv;
     if (id.startsWith(imagePrefix))
     {
-        if (m_requestingImageTexture)
+        if (m_requestingImageTexture.exchange(true))
         {
             qCritical() << "Image is already loading";
             return QImage();
         }
-        m_requestingImageTexture = true;
         auto onExit = qScopeGuard([this] {
             m_requestingImageTexture = false;
         });
@@ -323,7 +323,7 @@ QImage ImageProvider::requestImage(const QString &id, QSize *size, const QSize &
             }
         }
 
-        if (m_imageColorSpaceOverride.isValid())
+        if (scoped_lock locker(m_imageColorSpaceOverrideMutex); m_imageColorSpaceOverride.isValid())
         {
             img.setColorSpace(m_imageColorSpaceOverride);
         }

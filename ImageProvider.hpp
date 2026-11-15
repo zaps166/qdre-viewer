@@ -65,6 +65,8 @@ private:
 
     QColorSpace m_displayColorSpace;
     QColorSpace m_imageColorSpaceOverride;
+    mutex m_imageColorSpaceOverrideMutex;
+
     bool m_deepColorNotAvailable {};
     bool m_useGammaForSRgb {};
 };
