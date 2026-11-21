@@ -29,6 +29,10 @@ cmake --build build
 cmake --install build
 ```
 
+## AUR Install / Update
+
+`yay -S qdre-viewer-git` or `paru -S qdre-viewer-git`
+
 ## Settings
 
 Settings are stored at `~/.config/qdre-viewer.ini`.
