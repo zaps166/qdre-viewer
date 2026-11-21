@@ -65,7 +65,7 @@ Rectangle {
     }
 
     function fitToWindow() {
-        image.zoom = image.getFitViewZoom()
+        image.assignZoom(image.getFitViewZoom())
         image.centerX()
         image.centerY()
         image.autoView = false
@@ -138,6 +138,8 @@ Rectangle {
     Image {
         id: image
 
+        readonly property real eps: 1e-6
+
         readonly property bool transposed: rotation === 90.0 || rotation === 270.0
 
         readonly property real viewWidth: transposed ? height : width
@@ -149,8 +151,8 @@ Rectangle {
         readonly property real panMaxX: viewItem.width - viewWidth
         readonly property real panMaxY: viewItem.height - viewHeight
 
-        readonly property bool canScrollX: viewWidth - 1e-9 > viewItem.width
-        readonly property bool canScrollY: viewHeight - 1e-9 > viewItem.height
+        readonly property bool canScrollX: (viewWidth - eps) > viewItem.width
+        readonly property bool canScrollY: (viewHeight - eps) > viewItem.height
         readonly property bool canScroll: canScrollX || canScrollY
 
         readonly property bool isLoading: status === Image.Loading
@@ -189,6 +191,10 @@ Rectangle {
                   : smoothUpscale
                 : true
 
+        function isIntegerValue(value: real): bool {
+            return Math.abs(value - Math.round(value)) < eps;
+        }
+
         function setSize() {
             width = sourceSize.width * multiplier
             height = sourceSize.height * multiplier
@@ -202,6 +208,14 @@ Rectangle {
             const sourceWidth = transposed ? sourceSize.height : sourceSize.width
             const sourceHeight = transposed ? sourceSize.width : sourceSize.height
             return viewItem.dpr * Math.min(viewItem.width / sourceWidth, viewItem.height / sourceHeight)
+        }
+
+        function assignZoom(newZoom: real) {
+            if (isIntegerValue(newZoom)) {
+                zoom = Math.round(newZoom)
+            } else {
+                zoom = newZoom
+            }
         }
 
         function reposition() {
@@ -219,19 +233,39 @@ Rectangle {
             autoView = hasAutoView
         }
 
+        function snapX(xToSnap: real): real {
+            if (isIntegerValue(zoom)) {
+                const globalX = viewItem.mapToItem(null, xToSnap, 0.0).x;
+                const snappedGlobalX = Math.round(globalX * viewItem.dpr) / viewItem.dpr;
+                return parent.mapFromItem(null, snappedGlobalX, 0.0).x - translateX;
+            }
+            return xToSnap - translateX
+        }
+        function snapY(yToSnap: real): real {
+            if (isIntegerValue(zoom)) {
+                const globalY = viewItem.mapToItem(null, 0.0, yToSnap).y;
+                const snappedGlobalY = Math.round(globalY * viewItem.dpr) / viewItem.dpr;
+                return parent.mapFromItem(null, 0.0, snappedGlobalY).y - translateY;
+            }
+            return yToSnap - translateY
+        }
+
         function centerX() {
-            x = (viewItem.width - width) / 2.0
+            x = snapX(panMaxX / 2.0)
         }
         function centerY() {
-            y = (viewItem.height - height) / 2.0
+            y = snapY(panMaxY / 2.0)
         }
 
         function zoomUnderCursor(newZoom: real) {
-            const ratio = newZoom / zoom
+            const oldZoom = zoom
+
+            assignZoom(newZoom)
+
+            const ratio = zoom / oldZoom
+
             const oldBboxX = x + translateX
             const oldBboxY = y + translateY
-
-            zoom = newZoom
 
             if (!canScrollX) {
                 centerX()
@@ -243,12 +277,12 @@ Rectangle {
             if (canScrollX) {
                 const lastMousePosX = mouseArea.containsMouse ? mouseArea.lastMousePos.x : mouseArea.width / 2.0
                 const bboxX = lastMousePosX - (lastMousePosX - oldBboxX) * ratio
-                x = Math.min(Math.max(bboxX, panMaxX), 0.0) - translateX
+                x = snapX(Math.min(Math.max(bboxX, panMaxX), 0.0))
             }
             if (canScrollY) {
                 const lastMousePosY = mouseArea.containsMouse ? mouseArea.lastMousePos.y : mouseArea.height / 2.0
                 const bboxY = lastMousePosY - (lastMousePosY - oldBboxY) * ratio
-                y = Math.min(Math.max(bboxY, panMaxY), 0.0) - translateY
+                y = snapY(Math.min(Math.max(bboxY, panMaxY), 0.0))
             }
 
             fitView = false
@@ -401,10 +435,10 @@ Rectangle {
                     && (mouseWrappedPos.y >= 0.0 || lastMousePosBeforeWrap.y > newMousePos.y)) {
                 const delta = Qt.point(lastMousePos.x - newMousePos.x, lastMousePos.y - newMousePos.y)
                 if (image.canScrollX) {
-                    image.x = Math.max(Math.min(0.0, image.x + image.translateX - delta.x), image.panMaxX) - image.translateX
+                    image.x = image.snapX(Math.max(Math.min(0.0, image.x + image.translateX - delta.x), image.panMaxX))
                 }
                 if (image.canScrollY) {
-                    image.y = Math.max(Math.min(0.0, image.y + image.translateY - delta.y), image.panMaxY) - image.translateY
+                    image.y = image.snapY(Math.max(Math.min(0.0, image.y + image.translateY - delta.y), image.panMaxY))
                 }
                 lastMousePosBeforeWrap = Qt.point(newMousePos.x, newMousePos.y);
                 lastMousePos = maybeWrapMouse(newMousePos)
@@ -481,7 +515,7 @@ Rectangle {
 
         onPositionChanged: {
             if (pressed) {
-                image.x = -position * image.viewWidth - image.translateX
+                image.x = image.snapX(-position * image.viewWidth)
             }
         }
     }
@@ -495,7 +529,7 @@ Rectangle {
 
         onPositionChanged: {
             if (pressed) {
-                image.y = -position * image.viewHeight - image.translateY
+                image.y = image.snapY(-position * image.viewHeight)
             }
         }
     }
