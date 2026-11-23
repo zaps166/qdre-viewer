@@ -156,12 +156,16 @@ void DirectoryNavigation::requestUpdateFileList()
         // Filter unsupported files
         QMimeDatabase mimeDatabase;
         auto [filterItFirst, filterItLast] = ranges::remove_if(files, [&promise, &mimeDatabase, supportedMimeTypes](const QFileInfo &fi) {
-            if (!promise.isCanceled() && fi.size() > 0 && fi.isReadable())
+            if (promise.isCanceled())
+            {
+                return false;
+            }
+            if (fi.isReadable() && fi.size() > 0)
             {
                 const auto mimeType = mimeDatabase.mimeTypeForFile(fi).name();
                 return (mimeType == s_iccProfileMimeType || !supportedMimeTypes.contains(mimeType.toLatin1()));
             }
-            return false;
+            return true;
         });
         if (promise.isCanceled())
         {
